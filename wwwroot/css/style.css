@@ -346,7 +346,8 @@ tr:hover td {
 }
 
 .toast.success { border-color: var(--success); }
-.toast.error { border-color: var(--danger); }
+.toast.error   { border-color: var(--danger);  }
+.toast.warning { border-color: var(--warning); }
 
 @keyframes slideIn {
   from { transform: translateX(100%); opacity: 0; }
