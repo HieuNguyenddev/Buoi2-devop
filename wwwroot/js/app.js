@@ -1,4 +1,8 @@
-const API_URL = '/api/student';
+// Cấu hình URL Backend API (Hỗ trợ gọi API khi Deploy Frontend lên Vercel)
+const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const defaultBackendUrl = isLocalHost ? '' : (localStorage.getItem('API_BASE_URL') || 'http://localhost:5000');
+const API_URL = `${defaultBackendUrl}/api/student`;
+
 let currentStudents = [];
 let searchTimeout = null;
 
