@@ -109,34 +109,29 @@ URL này được lưu vào `localStorage`, mọi thao tác CRUD sẽ gọi về
 
 File: [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml)
 
-### Sơ Đồ Pipeline
+## 🌿 Quy Trình Nhánh & Tự Động Deploy (Release Workflow)
+
+Dự án áp dụng quy trình chuẩn Release-based Deployment:
 
 ```
-Push to main
-     │
-     ▼
-┌─────────────────────────────────┐
-│  Job 1: build-dotnet            │
-│  ┌──────────────────────────┐   │
-│  │ 1. Checkout source       │   │
-│  │ 2. Setup .NET 9 SDK      │   │
-│  │ 3. dotnet restore        │   │
-│  │ 4. dotnet build --Release│   │
-│  │ 5. dotnet publish        │   │
-│  │ 6. Upload artifact       │   │
-│  └──────────────────────────┘   │
-└────────────────┬────────────────┘
-                 │ (success)
-                 ▼
-┌─────────────────────────────────┐
-│  Job 2: deploy-vercel           │
-│  ┌──────────────────────────┐   │
-│  │ 1. Checkout source       │   │
-│  │ 2. Inject BACKEND_API_URL│   │ ← sed thay __API_BASE_URL__
-│  │    vào wwwroot/js/app.js  │   │   trong app.js trước khi deploy
-│  │ 3. vercel wwwroot --prod │   │ ← Deploy trực tiếp thư mục wwwroot
-│  └──────────────────────────┘   │
-└─────────────────────────────────┘
+[dev / main] ──(tính năng mới / sửa lỗi)──> [Pull Request] ──(Merge)──> [release] ──> [Vercel Production Auto-Deploy]
+```
+
+1. **Phát triển / Test**: Làm việc trên nhánh `main` hoặc nhánh tính năng.
+2. **Phát hành (Deploy)**: Tạo Pull Request từ `main` vào `release` (hoặc merge vào `release`).
+3. **GitHub Actions**: Tự động kích hoạt khi có commit/merge vào `release`, build kiểm thử và deploy lên Vercel Production.
+
+### Lệnh merge nhanh vào nhánh release từ máy:
+```bash
+# Chuyển sang nhánh release và kéo code mới nhất
+git checkout release
+git pull origin release
+
+# Merge thay đổi từ main sang release
+git merge main
+
+# Đẩy lên GitHub để tự động kích hoạt Deploy Production
+git push origin release
 ```
 
 ### Cấu Hình GitHub Secrets
