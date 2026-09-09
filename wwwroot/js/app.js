@@ -1,9 +1,15 @@
 // Backend API URL configuration
-// Reads from localStorage 'API_BASE_URL' if set, otherwise uses same origin
+// Priority: localStorage override → CI/CD injected env → same-origin fallback
+const _DEFAULT_API_BASE = '__API_BASE_URL__'; // replaced by CI/CD at build time
+
 function getApiBaseUrl() {
   const saved = localStorage.getItem('API_BASE_URL');
   if (saved) return saved.replace(/\/$/, '');
-  return '';  // same origin (works when frontend is served by the .NET app)
+  // Use the value injected by CI/CD (not a placeholder means it was replaced)
+  if (_DEFAULT_API_BASE && !_DEFAULT_API_BASE.startsWith('__')) {
+    return _DEFAULT_API_BASE.replace(/\/$/, '');
+  }
+  return ''; // same origin – works when .NET app serves the frontend directly
 }
 
 function getApiUrl() {

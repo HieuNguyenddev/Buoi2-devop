@@ -1,45 +1,210 @@
-# Hệ Thống Quản Lý Sinh Viên (ASP.NET Core 10 Web API & EF Core SQL Server)
+# 📘 Hệ Thống Quản Lý Sinh Viên
 
-Ứng dụng Web API Quản lý Sinh viên xây dựng bằng **ASP.NET Core**, **Entity Framework Core (SQL Server Code First)** và **Frontend (HTML5/CSS3/Vanilla JS)**.
-
----
-
-## 🚀 Tính Năng Chính
-- **CRUD Sinh Viên**: Thêm mới, chỉnh sửa, xóa và hiển thị danh sách sinh viên.
-- **EF Core Migrations (Code First)**: Tự động khởi tạo và migrate bảng `Students` vào SQL Server khi khởi chạy (`MigrateAsync()`).
-- **Swagger / OpenAPI**: Tích hợp UI kiểm thử API chuyên nghiệp.
-- **Frontend Tĩnh (`wwwroot`)**: Giao diện responsive, hiện đại tích hợp bộ dữ liệu mẫu dự phòng (Smart Fallback).
-- **GitHub Actions CI/CD Pipeline**: Tự động hóa quá trình khôi phục gói, biên dịch `.NET` và deploy giao diện lên Vercel.
+**Stack**: ASP.NET Core 10 · Entity Framework Core · SQL Server · Vanilla JS  
+**Demo**: [buoi2-devop.vercel.app](https://buoi2-devop.vercel.app)
 
 ---
 
-## 🛠️ Hướng Dẫn Chạy Tại Local
+## 🏗️ Kiến Trúc Dự Án
 
-1. **Sao chép cấu hình môi trường**:
-   ```bash
-   cp .env.example .env
-   ```
-2. **Khởi chạy ứng dụng**:
-   ```bash
-   dotnet run
-   ```
-3. Truy cập Swagger UI tại: `http://localhost:5292/swagger`
-4. Truy cập Web Frontend tại: `http://localhost:5292`
+```
+buoi2/
+├── Controllers/
+│   └── StudentController.cs   # REST API: GET / POST / PUT / DELETE
+├── Data/
+│   └── AppDbContext.cs         # EF Core DbContext + Seed Data
+├── Migrations/                 # EF Core Code-First migrations
+├── Models/
+│   └── Student.cs              # Model sinh viên
+├── wwwroot/                    # Frontend tĩnh (Vercel host)
+│   ├── index.html
+│   ├── css/style.css
+│   └── js/app.js               # CRUD logic, gọi API C#
+├── Program.cs                  # Startup: DI, DB, CORS, Swagger
+├── appsettings.json
+├── .env                        # Biến môi trường (bị gitignore)
+├── .env.example                # File mẫu
+├── vercel.json                 # Vercel static config
+└── .github/workflows/
+    └── ci-cd.yml               # GitHub Actions CI/CD
+```
 
 ---
 
-## 🔄 Quy Trình GitHub Actions CI/CD
+## 🚀 Chạy Tại Local
 
-File workflow đặt tại: [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml)
+### Yêu cầu
+- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- SQL Server (local hoặc remote)
+- `dotnet-ef` CLI: `dotnet tool install --global dotnet-ef`
 
-### 📌 Các bước tự động hóa:
-1. **Kiểm tra mã nguồn (Checkout)** mỗi khi có commit hoặc Pull Request vào nhánh `main`.
-2. **Setup môi trường .NET SDK** 9.0/10.0 trên Linux Runner (`ubuntu-latest`).
-3. **Khôi phục gói & Biên dịch project** (`dotnet restore`, `dotnet build --configuration Release`).
-4. **Đóng gói kết quả (Publish)** và lưu trữ Artifact.
-5. **Tự động Deploy Frontend lên Vercel**.
+### Bước thực hiện
 
-### 🔐 Cấu hình GitHub Secrets (Nếu sử dụng Vercel Direct Deploy Action):
-- `VERCEL_TOKEN`: Vercel Personal Access Token
-- `VERCEL_ORG_ID`: Vercel Organization / Team ID
-- `VERCEL_PROJECT_ID`: Vercel Project ID
+```bash
+# 1. Clone dự án
+git clone https://github.com/HieuNguyenddev/Buoi2-devop.git
+cd Buoi2-devop
+
+# 2. Tạo file .env từ mẫu và điền chuỗi kết nối SQL Server
+cp .env.example .env
+# Chỉnh sửa .env: thêm CONNECTIONSTRINGS__DEFAULTCONNECTION=...
+
+# 3. Chạy ứng dụng
+dotnet run
+```
+
+**Truy cập:**
+- 🌐 Web App: `http://localhost:5292`
+- 📄 Swagger UI: `http://localhost:5292/swagger`
+
+### Migrations & Database
+
+Ứng dụng tự động gọi `MigrateAsync()` mỗi khi khởi chạy — không cần chạy lệnh thủ công.
+
+Khi thay đổi Model (`Models/Student.cs`), tạo migration mới:
+
+```bash
+dotnet ef migrations add <TênMigration>
+# Ví dụ:
+dotnet ef migrations add AddPhoneNumber
+```
+
+Lần chạy tiếp theo, database sẽ được cập nhật tự động.
+
+---
+
+## ☁️ Triển Khai (Deployment)
+
+### Kiến Trúc Deploy
+
+```
+┌─────────────────────────────────────────────┐
+│  Vercel (Static Hosting)                    │
+│  → Phục vụ wwwroot/ (HTML, CSS, JS)         │
+│  → URL: https://buoi2-devop.vercel.app       │
+└──────────────────┬──────────────────────────┘
+                   │ fetch /api/student
+                   ▼
+┌─────────────────────────────────────────────┐
+│  ASP.NET Core Backend (Server riêng)        │
+│  → Chạy dotnet run hoặc deploy trên Render  │
+│  → Kết nối SQL Server                       │
+│  → CORS đã cho phép mọi origin              │
+└─────────────────────────────────────────────┘
+```
+
+### Backend chạy Local, Frontend trên Vercel
+
+Khi mở trang Vercel, nhấn nút **⚙️ Đổi URL Backend** và nhập:
+
+```
+http://localhost:5292
+```
+
+URL này được lưu vào `localStorage`, mọi thao tác CRUD sẽ gọi về API local của bạn.
+
+---
+
+## 🔄 GitHub Actions CI/CD Pipeline
+
+File: [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml)
+
+### Sơ Đồ Pipeline
+
+```
+Push to main
+     │
+     ▼
+┌─────────────────────────────────┐
+│  Job 1: build-dotnet            │
+│  ┌──────────────────────────┐   │
+│  │ 1. Checkout source       │   │
+│  │ 2. Setup .NET 9 SDK      │   │
+│  │ 3. dotnet restore        │   │
+│  │ 4. dotnet build --Release│   │
+│  │ 5. dotnet publish        │   │
+│  │ 6. Upload artifact       │   │
+│  └──────────────────────────┘   │
+└────────────────┬────────────────┘
+                 │ (success)
+                 ▼
+┌─────────────────────────────────┐
+│  Job 2: deploy-vercel           │
+│  ┌──────────────────────────┐   │
+│  │ 1. Checkout source       │   │
+│  │ 2. Inject BACKEND_API_URL│   │ ← sed thay __API_BASE_URL__
+│  │    vào wwwroot/js/app.js  │   │   trong app.js trước khi deploy
+│  │ 3. vercel pull           │   │
+│  │ 4. vercel deploy --prod  │   │
+│  └──────────────────────────┘   │
+└─────────────────────────────────┘
+```
+
+### Cấu Hình GitHub Secrets
+
+Vào **GitHub repo → Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secret Name | Giá trị | Bắt buộc |
+|---|---|---|
+| `VERCEL_TOKEN` | Personal Access Token tại [vercel.com/account/tokens](https://vercel.com/account/tokens) | ✅ |
+| `BACKEND_API_URL` | URL đầy đủ của C# API Backend (ví dụ: `https://my-api.onrender.com`) | ✅ |
+
+### Lấy `VERCEL_TOKEN`
+
+1. Đăng nhập [vercel.com](https://vercel.com) → **Account Settings → Tokens**
+2. Nhấn **Create Token**, đặt tên `GitHub Actions`, chọn scope **Full Account**
+3. Copy token và lưu vào GitHub Secrets với tên `VERCEL_TOKEN`
+
+### Cấu hình Vercel Project lần đầu (nếu chưa có)
+
+```bash
+# Cài Vercel CLI
+npm install -g vercel
+
+# Login và liên kết project
+vercel login
+vercel link
+
+# File .vercel/project.json sẽ được tạo, commit file này vào Git
+```
+
+### Luồng hoạt động sau khi cấu hình xong
+
+1. Bạn sửa code, `git push origin main`
+2. GitHub Actions tự động chạy:
+   - **Build & Verify** toàn bộ C# backend
+   - **Inject** URL backend vào `app.js`
+   - **Deploy** frontend lên Vercel Production
+3. Trang `https://buoi2-devop.vercel.app` được cập nhật trong ~30 giây
+
+---
+
+## 🔌 API Endpoints
+
+Base URL (local): `http://localhost:5292/api`
+
+| Method | Endpoint | Mô tả |
+|---|---|---|
+| `GET` | `/student` | Lấy danh sách sinh viên (hỗ trợ `?keyword=&className=`) |
+| `GET` | `/student/{id}` | Lấy sinh viên theo ID |
+| `POST` | `/student` | Thêm sinh viên mới |
+| `PUT` | `/student/{id}` | Cập nhật thông tin sinh viên |
+| `DELETE` | `/student/{id}` | Xóa sinh viên |
+
+Xem chi tiết tại Swagger: `http://localhost:5292/swagger`
+
+---
+
+## 🔐 Cấu Hình Biến Môi Trường
+
+Sao chép `.env.example` thành `.env`:
+
+```env
+# Môi trường
+ASPNETCORE_ENVIRONMENT=Development
+
+# Chuỗi kết nối SQL Server
+CONNECTIONSTRINGS__DEFAULTCONNECTION=Server=HOST,PORT;Database=DB;User Id=USER;Password=PASS;TrustServerCertificate=True;
+```
+
+> **Lưu ý:** File `.env` được gitignore và **KHÔNG được commit** lên GitHub để bảo vệ thông tin nhạy cảm.

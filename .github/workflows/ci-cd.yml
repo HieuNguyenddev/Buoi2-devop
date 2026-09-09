@@ -8,48 +8,70 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-test:
-    name: Build & Test .NET Backend
+  # ────────────────────────────────────────────────────────────────
+  # JOB 1: Build & Verify .NET Backend
+  # ────────────────────────────────────────────────────────────────
+  build-dotnet:
+    name:  Build & Verify .NET Backend
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Source Code
+    - name: Checkout source code
       uses: actions/checkout@v4
 
-    - name: Setup .NET SDK
+    - name: Setup .NET 9 SDK
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 9.0.x
 
-    - name: Restore Dependencies
+    - name: Restore NuGet packages
       run: dotnet restore
 
-    - name: Build Application (Release)
+    - name: Build (Release)
       run: dotnet build --no-restore --configuration Release
 
-    - name: Publish Artifacts
+    - name: Publish app
       run: dotnet publish --no-restore --configuration Release -o ./output
 
-    - name: Upload Build Artifact
+    - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: dotnet-app-release
+        name: dotnet-release
         path: ./output
 
-  deploy-frontend-vercel:
+  # ────────────────────────────────────────────────────────────────
+  # JOB 2: Deploy Frontend (wwwroot) to Vercel
+  # Runs only on push to main (not on PRs)
+  # ────────────────────────────────────────────────────────────────
+  deploy-vercel:
     name: Deploy Frontend to Vercel
-    needs: build-and-test
+    needs: build-dotnet
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-    - name: Checkout Source Code
+    - name: Checkout source code
       uses: actions/checkout@v4
+
+    # Inject backend API URL into app.js before deploying
+    # BACKEND_API_URL must be set in GitHub → Settings → Secrets & variables → Actions
+    - name: Inject Backend API URL into app.js
+      run: |
+        API_URL="${{ secrets.BACKEND_API_URL }}"
+        if [ -z "$API_URL" ]; then
+          echo "  BACKEND_API_URL secret is not set. app.js will keep the placeholder."
+        else
+          echo " Injecting BACKEND_API_URL = $API_URL"
+          sed -i "s|__API_BASE_URL__|${API_URL}|g" wwwroot/js/app.js
+        fi
+
+    - name: Verify injection result
+      run: grep "_DEFAULT_API_BASE" wwwroot/js/app.js | head -3
 
     - name: Install Vercel CLI
       run: npm install --global vercel@latest
 
-    - name: Pull Vercel Environment Information
+    - name: Pull Vercel project configuration
       run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
     - name: Deploy to Vercel Production
