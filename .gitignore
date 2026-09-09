@@ -10,6 +10,7 @@
 [Oo]bj/
 build/
 dist/
+out/
 
 # SQLite databases
 *.db

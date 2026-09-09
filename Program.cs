@@ -18,6 +18,12 @@ if (File.Exists(".env"))
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Cấu hình Cổng (Port) linh hoạt cho Vercel / Render / Railway / Docker Cloud
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -26,18 +32,30 @@ builder.Services.AddSwaggerGen();
 
 // Cấu hình Database Context cho SQL Server (Đọc chuỗi kết nối từ .env hoặc appsettings.json)
 string connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+    ?? Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Không tìm thấy chuỗi kết nối SQL Server ('DefaultConnection').");
+    ?? string.Empty;
 
-builder.Services.AddDbContext<AppDbContext>(options =>
+if (!string.IsNullOrWhiteSpace(connectionString))
 {
-    options.UseSqlServer(connectionString, sqlServerOptions => 
-        sqlServerOptions.EnableRetryOnFailure(
-            maxRetryCount: 3, 
-            maxRetryDelay: TimeSpan.FromSeconds(5), 
-            errorNumbersToAdd: null
-        ));
-});
+    builder.Services.AddDbContext<AppDbContext>(options =>
+    {
+        options.UseSqlServer(connectionString, sqlServerOptions => 
+            sqlServerOptions.EnableRetryOnFailure(
+                maxRetryCount: 3, 
+                maxRetryDelay: TimeSpan.FromSeconds(5), 
+                errorNumbersToAdd: null
+            ));
+    });
+}
+else
+{
+    // Fallback dummy context để ứng dụng không bị văng lỗi khi build tĩnh
+    builder.Services.AddDbContext<AppDbContext>(options =>
+    {
+        options.UseSqlServer("Server=localhost;Database=DummyDb;Trusted_Connection=True;TrustServerCertificate=True;");
+    });
+}
 
 // Cấu hình CORS cho phép truy cập frontend
 builder.Services.AddCors(options =>
@@ -59,15 +77,21 @@ using (var scope = app.Services.CreateScope())
     var logger = services.GetRequiredService<ILogger<Program>>();
     try
     {
-        var dbContext = services.GetRequiredService<AppDbContext>();
-        logger.LogInformation("Đang kiểm tra và áp dụng EF Core Migrations vào SQL Server...");
-        await dbContext.Database.MigrateAsync();
-        logger.LogInformation("Cơ sở dữ liệu SQL Server đã được Migrate thành công!");
+        if (!string.IsNullOrWhiteSpace(connectionString))
+        {
+            var dbContext = services.GetRequiredService<AppDbContext>();
+            logger.LogInformation("Đang kiểm tra và áp dụng EF Core Migrations vào SQL Server...");
+            await dbContext.Database.MigrateAsync();
+            logger.LogInformation("Cơ sở dữ liệu SQL Server đã được Migrate thành công!");
+        }
+        else
+        {
+            logger.LogWarning("Chưa cấu hình DB_CONNECTION_STRING. Bỏ qua bước tự động Migrate.");
+        }
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Lỗi trong quá trình Migrate cơ sở dữ liệu SQL Server.");
-        throw;
+        logger.LogError(ex, "Cảnh báo: Không thể thực hiện Migrate SQL Server lúc khởi chạy.");
     }
 }
 
