@@ -1,204 +1,220 @@
-# 📘 Hệ Thống Quản Lý Sinh Viên
+# HỆ THỐNG QUẢN LÝ SINH VIÊN
 
-**Stack**: ASP.NET Core 10 · Entity Framework Core · SQL Server · Vanilla JS  
-**Demo**: [buoi2-devop.vercel.app](https://buoi2-devop.vercel.app)
+Hệ thống quản lý sinh viên fullstack xây dựng trên nền tảng ASP.NET Core Web API kết hợp Entity Framework Core, hệ quản trị cơ sở dữ liệu SQL Server và giao diện người dùng hiện đại với hiệu ứng Glassmorphism (HTML5, CSS3, JavaScript ES6).
+
+- Công nghệ sử dụng: ASP.NET Core 10, Entity Framework Core, SQL Server, Vanilla JavaScript.
+- Địa chỉ ứng dụng trực tuyến: https://buoi2-devop.vercel.app
 
 ---
 
-## 🏗️ Kiến Trúc Dự Án
+## 1. Cấu Trúc Thư Mục Dự Án
 
 ```
 buoi2/
-├── Controllers/
-│   └── StudentController.cs   # REST API: GET / POST / PUT / DELETE
-├── Data/
-│   └── AppDbContext.cs         # EF Core DbContext + Seed Data
-├── Migrations/                 # EF Core Code-First migrations
-├── Models/
-│   └── Student.cs              # Model sinh viên
-├── wwwroot/                    # Frontend tĩnh (Vercel host)
-│   ├── index.html
-│   ├── css/style.css
-│   └── js/app.js               # CRUD logic, gọi API C#
-├── Program.cs                  # Startup: DI, DB, CORS, Swagger
-├── appsettings.json
-├── .env                        # Biến môi trường (bị gitignore)
-├── .env.example                # File mẫu
-├── vercel.json                 # Vercel static config
-└── .github/workflows/
-    └── ci-cd.yml               # GitHub Actions CI/CD
+|-- Controllers/
+|   `-- StudentController.cs     # Bộ điều khiển tiếp nhận và xử lý các yêu cầu HTTP REST API (GET, POST, PUT, DELETE)
+|-- Data/
+|   `-- AppDbContext.cs          # Cấu hình kết nối Entity Framework Core và dữ liệu mẫu khởi tạo (Seed Data)
+|-- Migrations/                  # Các tệp Migration dùng để đồng bộ và cập nhật cấu trúc bảng trong cơ sở dữ liệu
+|-- Models/
+|   `-- Student.cs               # Lớp đối tượng mô tả cấu trúc dữ liệu của Sinh viên
+|-- wwwroot/                     # Thư mục chứa toàn bộ giao diện tĩnh được phân phối qua Vercel
+|   |-- css/
+|   |   `-- style.css            # Định dạng giao diện theo phong cách Glassmorphism và màu sắc hiện đại
+|   |-- js/
+|   |   `-- app.js               # Xử lý tương tác giao diện, gọi API và tự động sao lưu dữ liệu cục bộ
+|   `-- index.html               # Trang giao diện người dùng chính
+|-- .github/
+|   `-- workflows/
+|       `-- ci-cd.yml            # Quy trình tự động hóa kiểm tra mã nguồn (Build) và triển khai (Deploy) qua GitHub Actions
+|-- Program.cs                   # Điểm khởi chạy của ứng dụng, cấu hình Dependency Injection, CORS, Swagger và Middleware
+|-- appsettings.json             # Tệp cấu hình ứng dụng mặc định
+|-- vercel.json                  # Tệp cấu hình máy chủ tĩnh phục vụ triển khai trên nền tảng Vercel
+|-- .env.example                 # Tệp mẫu hướng dẫn khai báo biến môi trường
+`-- SimpleCrudApp.csproj         # Tệp cấu hình dự án .NET và các gói thư viện NuGet phụ thuộc
 ```
 
 ---
 
-## 🚀 Chạy Tại Local
+## 2. Hướng Dẫn Cài Đặt Và Chạy Ứng Dụng Cục Bộ (Local)
 
-### Yêu cầu
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- SQL Server (local hoặc remote)
-- `dotnet-ef` CLI: `dotnet tool install --global dotnet-ef`
+### 2.1. Yêu cầu môi trường
+- Bộ công cụ .NET SDK phiên bản 9.0 trở lên.
+- Hệ quản trị cơ sở dữ liệu Microsoft SQL Server (cài đặt cục bộ, chạy qua Docker hoặc sử dụng dịch vụ đám mây).
+- Công cụ dòng lệnh Entity Framework CLI: `dotnet tool install --global dotnet-ef`
 
-### Bước thực hiện
+### 2.2. Các bước khởi chạy chi tiết
 
-```bash
-# 1. Clone dự án
-git clone https://github.com/HieuNguyenddev/Buoi2-devop.git
-cd Buoi2-devop
+1. Sao chép kho mã nguồn về máy tính cá nhân:
+   ```bash
+   git clone https://github.com/HieuNguyenddev/Buoi2-devop.git
+   cd Buoi2-devop
+   ```
 
-# 2. Tạo file .env từ mẫu và điền chuỗi kết nối SQL Server
-cp .env.example .env
-# Chỉnh sửa .env: thêm CONNECTIONSTRINGS__DEFAULTCONNECTION=...
+2. Tạo tệp cấu hình môi trường từ mẫu:
+   ```bash
+   cp .env.example .env
+   ```
+   Mở tệp `.env` và điền chuỗi kết nối đến máy chủ SQL Server của bạn:
+   ```env
+   ASPNETCORE_ENVIRONMENT=Development
+   CONNECTIONSTRINGS__DEFAULTCONNECTION=Server=localhost,1433;Database=QuanLySinhVienDB;User Id=sa;Password=MatKhauCuaBan;TrustServerCertificate=True;
+   ```
 
-# 3. Chạy ứng dụng
-dotnet run
-```
+3. Khởi chạy ứng dụng:
+   ```bash
+   dotnet run
+   ```
 
-**Truy cập:**
-- 🌐 Web App: `http://localhost:5292`
-- 📄 Swagger UI: `http://localhost:5292/swagger`
-
-### Migrations & Database
-
-Ứng dụng tự động gọi `MigrateAsync()` mỗi khi khởi chạy — không cần chạy lệnh thủ công.
-
-Khi thay đổi Model (`Models/Student.cs`), tạo migration mới:
-
-```bash
-dotnet ef migrations add <TênMigration>
-# Ví dụ:
-dotnet ef migrations add AddPhoneNumber
-```
-
-Lần chạy tiếp theo, database sẽ được cập nhật tự động.
+4. Truy cập hệ thống trên trình duyệt:
+   - Giao diện người dùng: `http://localhost:5292`
+   - Tài liệu kiểm thử API (Swagger UI): `http://localhost:5292/swagger`
 
 ---
 
-## ☁️ Triển Khai (Deployment)
+## 3. Quản Lý Cơ Sở Dữ Liệu Và EF Core Migrations
 
-### Kiến Trúc Deploy
+Hệ thống được phát triển theo mô hình Code-First. Khi ứng dụng khởi động thông qua `dotnet run`, hàm `MigrateAsync()` trong `Program.cs` sẽ tự động kiểm tra cơ sở dữ liệu, áp dụng các bản migration chưa chạy và tạo sẵn 5 bản ghi sinh viên mẫu nếu cơ sở dữ liệu còn trống.
 
+Trong trường hợp bạn thay đổi thuộc tính trong lớp `Models/Student.cs`, hãy thực hiện các lệnh sau để cập nhật cấu trúc bảng:
+```bash
+# 1. Tạo bản ghi migration mới
+dotnet ef migrations add <TenMigration>
+
+# 2. Áp dụng thay đổi vào cơ sở dữ liệu
+dotnet ef database update
 ```
-┌─────────────────────────────────────────────┐
-│  Vercel (Static Hosting)                    │
-│  → Phục vụ wwwroot/ (HTML, CSS, JS)         │
-│  → URL: https://buoi2-devop.vercel.app       │
-└──────────────────┬──────────────────────────┘
-                   │ fetch /api/student
-                   ▼
-┌─────────────────────────────────────────────┐
-│  ASP.NET Core Backend (Server riêng)        │
-│  → Chạy dotnet run hoặc deploy trên Render  │
-│  → Kết nối SQL Server                       │
-│  → CORS đã cho phép mọi origin              │
-└─────────────────────────────────────────────┘
-```
-
-### Backend chạy Local, Frontend trên Vercel
-
-Khi mở trang Vercel, nhấn nút **⚙️ Đổi URL Backend** và nhập:
-
-```
-http://localhost:5292
-```
-
-URL này được lưu vào `localStorage`, mọi thao tác CRUD sẽ gọi về API local của bạn.
 
 ---
 
-## 🔄 GitHub Actions CI/CD Pipeline
+## 4. Danh Sách Các Điểm Cuối REST API (API Endpoints)
 
-File: [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml)
+Địa chỉ máy chủ mặc định tại môi trường cục bộ: `http://localhost:5292/api`
 
-## 🌿 Quy Trình Nhánh & Tự Động Deploy (Release Workflow)
+| Phương thức HTTP | Đường dẫn API | Mô tả chức năng | Tham số hỗ trợ |
+|---|---|---|---|
+| GET | /api/student | Lấy toàn bộ danh sách sinh viên | `keyword` (tìm theo tên, mã SV, email), `className` (lọc theo lớp) |
+| GET | /api/student/{id} | Lấy thông tin chi tiết của sinh viên theo mã định danh | `id` (số nguyên) |
+| POST | /api/student | Thêm mới một hồ sơ sinh viên vào hệ thống | Dữ liệu định dạng JSON trong phần thân yêu cầu (Body) |
+| PUT | /api/student/{id} | Cập nhật thông tin hồ sơ sinh viên theo mã định danh | `id` trên đường dẫn và dữ liệu JSON trong phần thân yêu cầu |
+| DELETE | /api/student/{id} | Xóa vĩnh viễn hồ sơ sinh viên khỏi hệ thống | `id` (số nguyên) |
 
-Dự án áp dụng quy trình chuẩn Release-based Deployment:
+---
+
+---
+
+## 5. Luồng Hoạt Động Của Hệ Thống (System Workflows)
+
+### 5.1. Luồng xử lý yêu cầu dữ liệu (Request - Response Lifecycle)
 
 ```
-[dev / main] ──(tính năng mới / sửa lỗi)──> [Pull Request] ──(Merge)──> [release] ──> [Vercel Production Auto-Deploy]
+[ Trình duyệt Người dùng ]
+           │
+           │  1. Gửi HTTP Request (Fetch API: GET/POST/PUT/DELETE)
+           ▼
+[ ASP.NET Core Middleware Pipeline ]
+           │  - Kiểm tra Routing
+           │  - Kiểm tra Chính sách CORS (Cho phép truy cập)
+           │  - Ánh xạ Controller & Action
+           ▼
+[ StudentController ]
+           │  2. Xác thực tính hợp lệ của Model (ModelState.IsValid)
+           │  3. Kiểm tra logic nghiệp vụ (Kiểm tra trùng lặp Mã sinh viên)
+           ▼
+[ Entity Framework Core (AppDbContext) ]
+           │  4. Tạo câu lệnh truy vấn T-SQL tương ứng
+           ▼
+[ Microsoft SQL Server ]
+           │  5. Thực thi và phản hồi dữ liệu kết quả
+           ▼
+[ StudentController ]
+           │  6. Đóng gói kết quả thành chuẩn JSON (HTTP 200, 201, 400, 404)
+           ▼
+[ Trình duyệt Người dùng (app.js) ]
+              7. Cập nhật bảng dữ liệu, biểu đồ thống kê và hiển thị thông báo (Toast)
 ```
 
-1. **Phát triển / Test**: Làm việc trên nhánh `main` hoặc nhánh tính năng.
-2. **Phát hành (Deploy)**: Tạo Pull Request từ `main` vào `release` (hoặc merge vào `release`).
-3. **GitHub Actions**: Tự động kích hoạt khi có commit/merge vào `release`, build kiểm thử và deploy lên Vercel Production.
+### 5.2. Luồng hoạt động lai thông minh của Frontend (Hybrid Client Flow)
 
-### Lệnh merge nhanh vào nhánh release từ máy:
+Để đảm bảo ứng dụng luôn hoạt động ổn định và có thể kiểm thử mượt mà trong mọi môi trường:
+
+```
+Khi người dùng truy cập trang Web:
+  │
+  ├──> [1] Thử kết nối đến Backend C# API (Local hoặc Cloud)
+  │      │
+  │      ├──> Kết nối THÀNH CÔNG:
+  │      │      Lấy dữ liệu trực tiếp từ SQL Server và hiển thị lên giao diện.
+  │      │
+  │      └──> Kết nối THẤT BẠI hoặc Hết thời gian chờ (Timeout > 3.5s):
+  │             Hệ thống tự động kích hoạt bộ lưu trữ cục bộ (Local Database Storage).
+  │             Nạp sẵn 5 sinh viên mẫu và lưu toàn bộ thao tác Thêm/Sửa/Xóa vào trình duyệt.
+```
+
+---
+
+## 6. Quy Trình Phân Nhánh Và Tự Động Triển Khai (CI/CD Release Workflow)
+
+Dự án áp dụng quy trình kiểm soát mã nguồn theo nhánh và tự động hóa toàn bộ quy trình phát hành sản phẩm thông qua GitHub Actions và Vercel.
+
+### 6.1. Chiến lược phân nhánh (Branching Strategy)
+- **Nhánh `main`**: Dành cho quá trình phát triển tính năng mới, kiểm thử và sửa lỗi.
+- **Nhánh `release`**: Nhánh phát hành chính thức. Bất kỳ thay đổi nào được gộp (merge) vào nhánh này sẽ tự động kích hoạt tiến trình triển khai lên môi trường Vercel Production.
+
+### 6.2. Sơ đồ luồng CI/CD tự động
+
+```
+[ Developer ]
+     │  git push origin main / Pull Request
+     ▼
+[ GitHub Actions: Job 1 - build-dotnet ]
+     │  1. Khởi tạo môi trường Ubuntu & .NET 9 SDK
+     │  2. Restore NuGet Packages
+     │  3. Biên dịch dự án (dotnet build --Release)
+     │  4. Đóng gói bản phát hành (dotnet publish)
+     ▼
+[ Kiểm thử thành công ]
+     │
+     │  (Khi gộp mã nguồn vào nhánh release)
+     ▼
+[ GitHub Actions: Job 2 - deploy-vercel ]
+     │  1. Tải và cài đặt Vercel CLI
+     │  2. Nhúng biến cấu hình môi trường
+     │  3. Triển khai trực tiếp thư mục wwwroot lên Production
+     ▼
+[ Vercel Production: https://buoi2-devop.vercel.app ]
+```
+
+### 6.3. Hướng dẫn phát hành phiên bản mới (Release) từ dòng lệnh
+Sau khi hoàn tất việc kiểm thử mã nguồn trên nhánh `main`, thực hiện chuỗi lệnh sau để phát hành lên Production:
+
 ```bash
-# Chuyển sang nhánh release và kéo code mới nhất
+# Bước 1: Chuyển sang nhánh release và cập nhật phiên bản mới nhất từ remote
 git checkout release
 git pull origin release
 
-# Merge thay đổi từ main sang release
+# Bước 2: Gộp những thay đổi mới nhất từ nhánh main vào nhánh release
 git merge main
 
-# Đẩy lên GitHub để tự động kích hoạt Deploy Production
+# Bước 3: Đẩy mã nguồn lên GitHub để kích hoạt tiến trình tự động triển khai
 git push origin release
+
+# Bước 4: Chuyển trở lại nhánh main để tiếp tục phát triển
+git checkout main
 ```
 
-### Cấu Hình GitHub Secrets
+### 6.4. Cấu hình các khóa bí mật (GitHub Secrets)
+Để quy trình tự động triển khai hoạt động ổn định, cần thiết lập các giá trị bí mật tại mục **GitHub Repository -> Settings -> Secrets and variables -> Actions**:
 
-Vào **GitHub repo → Settings → Secrets and variables → Actions → New repository secret**:
-
-| Secret Name | Giá trị | Bắt buộc |
+| Tên biến bí mật (Secret Name) | Mô tả chi tiết | Tính bắt buộc |
 |---|---|---|
-| `VERCEL_TOKEN` | Personal Access Token tại [vercel.com/account/tokens](https://vercel.com/account/tokens) | ✅ |
-| `BACKEND_API_URL` | URL đầy đủ của C# API Backend (ví dụ: `https://my-api.onrender.com`) | ✅ |
-
-### Lấy `VERCEL_TOKEN`
-
-1. Đăng nhập [vercel.com](https://vercel.com) → **Account Settings → Tokens**
-2. Nhấn **Create Token**, đặt tên `GitHub Actions`, chọn scope **Full Account**
-3. Copy token và lưu vào GitHub Secrets với tên `VERCEL_TOKEN`
-
-### Cấu hình Vercel Project lần đầu (nếu chưa có)
-
-```bash
-# Cài Vercel CLI
-npm install -g vercel
-
-# Login và liên kết project
-vercel login
-vercel link
-
-# File .vercel/project.json sẽ được tạo, commit file này vào Git
-```
-
-### Luồng hoạt động sau khi cấu hình xong
-
-1. Bạn sửa code, `git push origin main`
-2. GitHub Actions tự động chạy:
-   - **Build & Verify** toàn bộ C# backend
-   - **Inject** URL backend vào `app.js`
-   - **Deploy** frontend lên Vercel Production
-3. Trang `https://buoi2-devop.vercel.app` được cập nhật trong ~30 giây
+| `VERCEL_TOKEN` | Khóa xác thực tài khoản Vercel cá nhân (Tạo tại đường dẫn vercel.com/account/tokens) | Bắt buộc |
+| `BACKEND_API_URL` | Địa chỉ URL công khai của máy chủ C# Web API (Ví dụ: `https://my-backend-api.onrender.com`) | Tùy chọn |
 
 ---
 
-## 🔌 API Endpoints
+## 7. Chính Sách Bảo Mật Và Biến Môi Trường
 
-Base URL (local): `http://localhost:5292/api`
-
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| `GET` | `/student` | Lấy danh sách sinh viên (hỗ trợ `?keyword=&className=`) |
-| `GET` | `/student/{id}` | Lấy sinh viên theo ID |
-| `POST` | `/student` | Thêm sinh viên mới |
-| `PUT` | `/student/{id}` | Cập nhật thông tin sinh viên |
-| `DELETE` | `/student/{id}` | Xóa sinh viên |
-
-Xem chi tiết tại Swagger: `http://localhost:5292/swagger`
-
----
-
-## 🔐 Cấu Hình Biến Môi Trường
-
-Sao chép `.env.example` thành `.env`:
-
-```env
-# Môi trường
-ASPNETCORE_ENVIRONMENT=Development
-
-# Chuỗi kết nối SQL Server
-CONNECTIONSTRINGS__DEFAULTCONNECTION=Server=HOST,PORT;Database=DB;User Id=USER;Password=PASS;TrustServerCertificate=True;
-```
-
-> **Lưu ý:** File `.env` được gitignore và **KHÔNG được commit** lên GitHub để bảo vệ thông tin nhạy cảm.
+- Tệp cấu hình chứa thông tin nhạy cảm `.env` đã được liệt kê trong danh sách bỏ qua của Git (`.gitignore`).
+- Không thực hiện lưu trữ hoặc đẩy các thông tin kết nối cơ sở dữ liệu, tài khoản mật khẩu lên kho mã nguồn công khai.
+- Khi triển khai trên các dịch vụ máy chủ đám mây, hãy thiết lập các chuỗi kết nối và thông số cấu hình trực tiếp trong phần Quản lý biến môi trường (Environment Variables) của nhà cung cấp.
