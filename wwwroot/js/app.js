@@ -1,9 +1,9 @@
-// Cấu hình URL Backend API (Hỗ trợ khi Deploy Frontend lên Vercel)
+// Cấu hình URL Backend API (Phù hợp port 5292 trong launchSettings.json)
 function getApiBaseUrl() {
   const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const savedUrl = localStorage.getItem('API_BASE_URL');
   if (savedUrl) return savedUrl.replace(/\/$/, '');
-  return isLocalHost ? '' : 'http://localhost:5000';
+  return isLocalHost ? '' : 'http://localhost:5292';
 }
 
 function getApiUrl() {
@@ -13,6 +13,15 @@ function getApiUrl() {
 
 let currentStudents = [];
 let searchTimeout = null;
+
+// Dữ liệu mẫu hiển thị khi Backend chưa sẵn sàng trên Vercel
+const MOCK_STUDENTS = [
+  { id: 1, studentCode: "SV001", fullName: "Nguyễn Văn An", dateOfBirth: "2003-05-15T00:00:00", className: "CNTT-K15A", gpa: 8.5, email: "an.nguyen@example.com" },
+  { id: 2, studentCode: "SV002", fullName: "Trần Thị Bình", dateOfBirth: "2003-08-20T00:00:00", className: "CNTT-K15B", gpa: 9.0, email: "binh.tran@example.com" },
+  { id: 3, studentCode: "SV003", fullName: "Lê Hoàng Cường", dateOfBirth: "2002-12-10T00:00:00", className: "HTTT-K14", gpa: 7.2, email: "cuong.le@example.com" },
+  { id: 4, studentCode: "SV004", fullName: "Phạm Thu Dung", dateOfBirth: "2004-03-25T00:00:00", className: "CNTT-K16A", gpa: 6.8, email: "dung.pham@example.com" },
+  { id: 5, studentCode: "SV005", fullName: "Vũ Minh Đức", dateOfBirth: "2003-01-05T00:00:00", className: "KTPM-K15", gpa: 8.8, email: "duc.vu@example.com" }
+];
 
 document.addEventListener('DOMContentLoaded', () => {
   updateApiConfigUI();
@@ -35,8 +44,8 @@ function updateApiConfigUI() {
 }
 
 function promptChangeApiUrl() {
-  const current = getApiBaseUrl() || 'http://localhost:5000';
-  const newUrl = prompt('Nhập địa chỉ URL của Server Backend (ví dụ: http://localhost:5000 hoặc https://your-api.onrender.com):', current);
+  const current = getApiBaseUrl() || 'http://localhost:5292';
+  const newUrl = prompt('Nhập địa chỉ URL của Server Backend (mặc định: http://localhost:5292 hoặc URL Backend đã deploy):', current);
   if (newUrl !== null) {
     const trimmed = newUrl.trim().replace(/\/$/, '');
     if (trimmed) {
@@ -49,7 +58,7 @@ function promptChangeApiUrl() {
   }
 }
 
-// Fetch all students from API
+// Fetch all students from API (hoặc dùng Mock Data nếu chưa bật C# API)
 async function loadStudents(keyword = '') {
   try {
     let url = getApiUrl();
@@ -57,17 +66,35 @@ async function loadStudents(keyword = '') {
       url += `?keyword=${encodeURIComponent(keyword)}`;
     }
 
-    const response = await fetch(url);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status} (${response.statusText || 'Không thể kết nối Backend API'})`);
+      throw new Error(`HTTP ${response.status}`);
     }
 
     currentStudents = await response.json();
     renderStudentTable(currentStudents);
     updateStats(currentStudents);
   } catch (error) {
-    console.error('Error loading students:', error);
-    showToast(`Không thể kết nối Backend API (${error.message}). Nhấn "Đổi URL Backend" nếu C# API đang chạy ở cổng khác.`, 'error');
+    console.warn('API Unreachable, using fallback data:', error);
+    let filtered = MOCK_STUDENTS;
+    if (keyword) {
+      const kw = keyword.toLowerCase();
+      filtered = MOCK_STUDENTS.filter(s => 
+        s.fullName.toLowerCase().includes(kw) || 
+        s.studentCode.toLowerCase().includes(kw) || 
+        s.email.toLowerCase().includes(kw)
+      );
+    }
+    currentStudents = filtered;
+    renderStudentTable(currentStudents);
+    updateStats(currentStudents);
+
+    showToast(`Đang hiển thị dữ liệu mẫu. Bật "dotnet run" tại máy để nối SQL Server (cổng: http://localhost:5292)`, 'info');
   }
 }
 
