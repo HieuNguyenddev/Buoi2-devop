@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -13,35 +13,35 @@ namespace SimpleCrudApp.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "Students",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    StudentCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    FullName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    DateOfBirth = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ClassName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Gpa = table.Column<double>(type: "float", nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(max)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Students", x => x.Id);
-                });
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Students]') AND type in (N'U'))
+                BEGIN
+                    CREATE TABLE [Students] (
+                        [Id] int NOT NULL IDENTITY,
+                        [StudentCode] nvarchar(20) NOT NULL,
+                        [FullName] nvarchar(100) NOT NULL,
+                        [DateOfBirth] datetime2 NOT NULL,
+                        [ClassName] nvarchar(50) NOT NULL,
+                        [Gpa] float NOT NULL,
+                        [Email] nvarchar(max) NOT NULL,
+                        CONSTRAINT [PK_Students] PRIMARY KEY ([Id])
+                    );
 
-            migrationBuilder.InsertData(
-                table: "Students",
-                columns: new[] { "Id", "ClassName", "DateOfBirth", "Email", "FullName", "Gpa", "StudentCode" },
-                values: new object[,]
-                {
-                    { 1, "CNTT-K15A", new DateTime(2003, 5, 15, 0, 0, 0, 0, DateTimeKind.Unspecified), "an.nguyen@example.com", "Nguyễn Văn An", 8.5, "SV001" },
-                    { 2, "CNTT-K15B", new DateTime(2003, 8, 20, 0, 0, 0, 0, DateTimeKind.Unspecified), "binh.tran@example.com", "Trần Thị Bình", 9.0, "SV002" },
-                    { 3, "HTTT-K14", new DateTime(2002, 12, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), "cuong.le@example.com", "Lê Hoàng Cường", 7.2000000000000002, "SV003" },
-                    { 4, "CNTT-K16A", new DateTime(2004, 3, 25, 0, 0, 0, 0, DateTimeKind.Unspecified), "dung.pham@example.com", "Phạm Thu Dung", 6.7999999999999998, "SV004" },
-                    { 5, "KTPM-K15", new DateTime(2003, 1, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), "duc.vu@example.com", "Vũ Minh Đức", 8.8000000000000007, "SV005" }
-                });
+                    IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'ClassName', N'DateOfBirth', N'Email', N'FullName', N'Gpa', N'StudentCode') AND [object_id] = OBJECT_ID(N'[Students]'))
+                        SET IDENTITY_INSERT [Students] ON;
+                    
+                    INSERT INTO [Students] ([Id], [ClassName], [DateOfBirth], [Email], [FullName], [Gpa], [StudentCode])
+                    VALUES 
+                        (1, N'CNTT-K15A', '2003-05-15T00:00:00.0000000', N'an.nguyen@example.com', N'Nguyễn Văn An', 8.5, N'SV001'),
+                        (2, N'CNTT-K15B', '2003-08-20T00:00:00.0000000', N'binh.tran@example.com', N'Trần Thị Bình', 9.0, N'SV002'),
+                        (3, N'HTTT-K14', '2002-12-10T00:00:00.0000000', N'cuong.le@example.com', N'Lê Hoàng Cường', 7.2, N'SV003'),
+                        (4, N'CNTT-K16A', '2004-03-25T00:00:00.0000000', N'dung.pham@example.com', N'Phạm Thu Dung', 6.8, N'SV004'),
+                        (5, N'KTPM-K15', '2003-01-05T00:00:00.0000000', N'duc.vu@example.com', N'Vũ Minh Đức', 8.8, N'SV005');
+
+                    IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'ClassName', N'DateOfBirth', N'Email', N'FullName', N'Gpa', N'StudentCode') AND [object_id] = OBJECT_ID(N'[Students]'))
+                        SET IDENTITY_INSERT [Students] OFF;
+                END
+            ");
         }
 
         /// <inheritdoc />
