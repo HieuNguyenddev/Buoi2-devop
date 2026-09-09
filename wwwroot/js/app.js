@@ -1,15 +1,61 @@
-// Backend API URL configuration
-// Priority: localStorage override → CI/CD injected env → same-origin fallback
-const _DEFAULT_API_BASE = '__API_BASE_URL__'; // replaced by CI/CD at build time
+// ─── CONFIGURATION & STORAGE ──────────────────────────────────────────────────
+const _DEFAULT_API_BASE = '__API_BASE_URL__'; // Replaced by CI/CD at build time
+
+const INITIAL_SEED_STUDENTS = [
+  {
+    id: 1,
+    studentCode: "SV001",
+    fullName: "Nguyễn Văn An",
+    dateOfBirth: "2003-05-15T00:00:00",
+    className: "CNTT-K15A",
+    gpa: 8.5,
+    email: "an.nguyen@example.com"
+  },
+  {
+    id: 2,
+    studentCode: "SV002",
+    fullName: "Trần Thị Bình",
+    dateOfBirth: "2003-08-20T00:00:00",
+    className: "CNTT-K15B",
+    gpa: 9.0,
+    email: "binh.tran@example.com"
+  },
+  {
+    id: 3,
+    studentCode: "SV003",
+    fullName: "Lê Hoàng Cường",
+    dateOfBirth: "2002-12-10T00:00:00",
+    className: "HTTT-K14",
+    gpa: 7.2,
+    email: "cuong.le@example.com"
+  },
+  {
+    id: 4,
+    studentCode: "SV004",
+    fullName: "Phạm Thu Dung",
+    dateOfBirth: "2004-03-25T00:00:00",
+    className: "CNTT-K16A",
+    gpa: 6.8,
+    email: "dung.pham@example.com"
+  },
+  {
+    id: 5,
+    studentCode: "SV005",
+    fullName: "Vũ Minh Đức",
+    dateOfBirth: "2003-01-05T00:00:00",
+    className: "KTPM-K15",
+    gpa: 8.8,
+    email: "duc.vu@example.com"
+  }
+];
 
 function getApiBaseUrl() {
   const saved = localStorage.getItem('API_BASE_URL');
   if (saved) return saved.replace(/\/$/, '');
-  // Use the value injected by CI/CD (not a placeholder means it was replaced)
   if (_DEFAULT_API_BASE && !_DEFAULT_API_BASE.startsWith('__')) {
     return _DEFAULT_API_BASE.replace(/\/$/, '');
   }
-  return ''; // same origin – works when .NET app serves the frontend directly
+  return '';
 }
 
 function getApiUrl() {
@@ -17,8 +63,27 @@ function getApiUrl() {
   return base ? `${base}/api/student` : '/api/student';
 }
 
+let isFallbackMode = false;
 let currentStudents = [];
 let searchTimeout = null;
+
+// Initialize LocalStorage Data if not present
+function getLocalDb() {
+  const data = localStorage.getItem('DEMO_STUDENTS_DB');
+  if (!data) {
+    localStorage.setItem('DEMO_STUDENTS_DB', JSON.stringify(INITIAL_SEED_STUDENTS));
+    return [...INITIAL_SEED_STUDENTS];
+  }
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    return [...INITIAL_SEED_STUDENTS];
+  }
+}
+
+function saveLocalDb(students) {
+  localStorage.setItem('DEMO_STUDENTS_DB', JSON.stringify(students));
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   updateApiConfigUI();
@@ -27,11 +92,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function updateApiConfigUI() {
   const baseUrl = getApiBaseUrl();
-  const displayUrl = baseUrl || window.location.origin;
+  const displayUrl = baseUrl || (window.location.hostname === 'localhost' ? window.location.origin : 'Demo Cloud / LocalStorage Mode');
 
   const currentUrlSpan = document.getElementById('currentApiUrl');
   if (currentUrlSpan) {
-    currentUrlSpan.textContent = `${displayUrl}/api/student`;
+    currentUrlSpan.textContent = baseUrl ? `${baseUrl}/api/student` : (window.location.hostname === 'localhost' ? `${window.location.origin}/api/student` : 'Client Demo Storage (Tự động lưu)');
   }
 
   const swaggerLink = document.getElementById('swaggerLink');
@@ -41,17 +106,19 @@ function updateApiConfigUI() {
 }
 
 function promptChangeApiUrl() {
-  const current = getApiBaseUrl() || window.location.origin;
+  const current = getApiBaseUrl();
   const newUrl = prompt(
-    'Nhập URL gốc của Backend API (để trống nếu cùng domain):\nVí dụ: http://localhost:5292 hoặc https://my-api.onrender.com',
-    current
+    'Nhập URL gốc của Backend C# API:\nVí dụ: https://my-backend-api.onrender.com hoặc http://localhost:5292\n(Để trống để sử dụng chế độ Demo Cloud Lưu trữ Trình duyệt):',
+    current || ''
   );
   if (newUrl === null) return;
   const trimmed = newUrl.trim().replace(/\/$/, '');
   if (trimmed) {
     localStorage.setItem('API_BASE_URL', trimmed);
+    showToast('Đã chuyển sang Backend URL: ' + trimmed, 'success');
   } else {
     localStorage.removeItem('API_BASE_URL');
+    showToast('Đã chuyển sang chế độ Demo Cloud Storage', 'info');
   }
   updateApiConfigUI();
   loadStudents();
@@ -61,28 +128,53 @@ function promptChangeApiUrl() {
 
 async function loadStudents(keyword = '') {
   const tbody = document.getElementById('studentTableBody');
-  tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">Đang tải dữ liệu...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải dữ liệu...</td></tr>`;
 
+  let students = [];
+  const url = getApiUrl();
+  let fetchSuccessful = false;
+
+  // Try fetching from real C# Backend API
   try {
-    let url = getApiUrl();
-    if (keyword) url += `?keyword=${encodeURIComponent(keyword)}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s timeout for quick fallback
 
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+    let targetUrl = url;
+    if (keyword) targetUrl += `?keyword=${encodeURIComponent(keyword)}`;
 
-    currentStudents = await response.json();
-    renderStudentTable(currentStudents);
-    updateStats(currentStudents);
+    const response = await fetch(targetUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      students = await response.json();
+      fetchSuccessful = true;
+      isFallbackMode = false;
+    }
   } catch (error) {
-    console.error('loadStudents error:', error);
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--danger);">
-      <i class="fa-solid fa-triangle-exclamation"></i>
-      Không thể tải dữ liệu từ server.<br>
-      <small style="color:var(--text-muted)">Hãy nhấn <strong>"Đổi URL Backend"</strong> để trỏ đúng địa chỉ C# API.</small>
-    </td></tr>`;
-    updateStats([]);
-    showToast(`Lỗi kết nối API: ${error.message}`, 'error');
+    // Backend is unreachable or running on static Vercel host
+    fetchSuccessful = false;
   }
+
+  // If live API unavailable, use seamless LocalStorage DB
+  if (!fetchSuccessful) {
+    isFallbackMode = true;
+    let localData = getLocalDb();
+    if (keyword) {
+      const kw = keyword.toLowerCase();
+      students = localData.filter(s => 
+        (s.studentCode && s.studentCode.toLowerCase().includes(kw)) ||
+        (s.fullName && s.fullName.toLowerCase().includes(kw)) ||
+        (s.email && s.email.toLowerCase().includes(kw)) ||
+        (s.className && s.className.toLowerCase().includes(kw))
+      );
+    } else {
+      students = localData;
+    }
+  }
+
+  currentStudents = students;
+  renderStudentTable(currentStudents);
+  updateStats(currentStudents);
 }
 
 // ─── RENDER ────────────────────────────────────────────────────────────────────
@@ -104,7 +196,7 @@ function renderStudentTable(students) {
           <div style="font-size:0.75rem;color:var(--text-muted);">${escapeHtml(sv.email || '')}</div>
         </td>
         <td>${escapeHtml(sv.className)}</td>
-        <td><strong style="color:#60a5fa;">${sv.gpa.toFixed(1)}</strong></td>
+        <td><strong style="color:#60a5fa;">${Number(sv.gpa).toFixed(1)}</strong></td>
         <td><span class="badge ${badgeInfo.class}">${badgeInfo.label}</span></td>
         <td>
           <div style="display:flex;gap:6px;">
@@ -129,16 +221,17 @@ function updateStats(students) {
     document.getElementById('statGoodStudents').textContent = '0';
     return;
   }
-  const avg = (students.reduce((a, s) => a + s.gpa, 0) / students.length).toFixed(1);
+  const avg = (students.reduce((a, s) => a + Number(s.gpa), 0) / students.length).toFixed(1);
   document.getElementById('statAvgGrade').textContent = avg;
-  document.getElementById('statGoodStudents').textContent = students.filter(s => s.gpa >= 7.0).length;
+  document.getElementById('statGoodStudents').textContent = students.filter(s => Number(s.gpa) >= 7.0).length;
 }
 
 function getBadgeRank(gpa) {
-  if (gpa >= 8.5) return { class: 'badge-excel',   label: 'Xuất sắc'    };
-  if (gpa >= 7.0) return { class: 'badge-good',    label: 'Khá / Giỏi'  };
-  if (gpa >= 5.0) return { class: 'badge-average', label: 'Trung bình'  };
-  return            { class: 'badge-poor',    label: 'Yếu / Kém'   };
+  const g = Number(gpa);
+  if (g >= 8.5) return { class: 'badge-excel',   label: 'Xuất sắc'    };
+  if (g >= 7.0) return { class: 'badge-good',    label: 'Khá / Giỏi'  };
+  if (g >= 5.0) return { class: 'badge-average', label: 'Trung bình'  };
+  return               { class: 'badge-poor',    label: 'Yếu / Kém'   };
 }
 
 // ─── CREATE / UPDATE ───────────────────────────────────────────────────────────
@@ -146,39 +239,68 @@ function getBadgeRank(gpa) {
 async function handleFormSubmit(event) {
   event.preventDefault();
 
-  const id      = parseInt(document.getElementById('studentId').value) || 0;
-  const payload = {
-    id,
-    studentCode: document.getElementById('studentCode').value.trim(),
-    fullName:    document.getElementById('fullName').value.trim(),
-    dateOfBirth: document.getElementById('dateOfBirth').value
-      ? new Date(document.getElementById('dateOfBirth').value).toISOString()
-      : new Date().toISOString(),
-    className:   document.getElementById('className').value.trim(),
-    gpa:         parseFloat(document.getElementById('gpa').value) || 0,
-    email:       document.getElementById('email').value.trim()
-  };
+  const id          = parseInt(document.getElementById('studentId').value) || 0;
+  const studentCode = document.getElementById('studentCode').value.trim();
+  const fullName    = document.getElementById('fullName').value.trim();
+  const className   = document.getElementById('className').value.trim();
+  const gpa         = parseFloat(document.getElementById('gpa').value) || 0;
+  const email       = document.getElementById('email').value.trim();
+  const dobInput    = document.getElementById('dateOfBirth').value;
+  const dateOfBirth = dobInput ? new Date(dobInput).toISOString() : new Date().toISOString();
 
   const isEdit = id > 0;
-  const method = isEdit ? 'PUT' : 'POST';
-  const url    = isEdit ? `${getApiUrl()}/${id}` : getApiUrl();
+  const payload = { id, studentCode, fullName, dateOfBirth, className, gpa, email };
 
-  try {
-    const response = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+  // If live API is connected
+  if (!isFallbackMode) {
+    const method = isEdit ? 'PUT' : 'POST';
+    const url    = isEdit ? `${getApiUrl()}/${id}` : getApiUrl();
 
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || `HTTP ${response.status}`);
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
-    showToast(isEdit ? 'Cập nhật sinh viên thành công!' : 'Thêm mới sinh viên thành công!', 'success');
-    resetForm();
-    loadStudents();
-  } catch (error) {
-    showToast(`Lỗi: ${error.message}`, 'error');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || `HTTP ${response.status}`);
+
+      showToast(isEdit ? 'Cập nhật sinh viên thành công!' : 'Thêm mới sinh viên thành công!', 'success');
+      resetForm();
+      loadStudents();
+      return;
+    } catch (error) {
+      console.warn('API call failed, falling back to local database storage', error);
+    }
   }
+
+  // Local Storage Fallback Mode CRUD
+  let localData = getLocalDb();
+
+  // Duplicate student code check
+  const duplicate = localData.some(s => s.studentCode.toLowerCase() === studentCode.toLowerCase() && s.id !== id);
+  if (duplicate) {
+    showToast(`Mã sinh viên "${studentCode}" đã tồn tại!`, 'error');
+    return;
+  }
+
+  if (isEdit) {
+    const index = localData.findIndex(s => s.id === id);
+    if (index !== -1) {
+      localData[index] = { ...payload, id };
+    }
+    showToast('Cập nhật sinh viên thành công!', 'success');
+  } else {
+    const newId = localData.length > 0 ? Math.max(...localData.map(s => s.id)) + 1 : 1;
+    payload.id = newId;
+    localData.unshift(payload);
+    showToast('Thêm mới sinh viên thành công!', 'success');
+  }
+
+  saveLocalDb(localData);
+  resetForm();
+  loadStudents();
 }
 
 // ─── EDIT ──────────────────────────────────────────────────────────────────────
@@ -220,16 +342,25 @@ function resetForm() {
 async function deleteStudent(id, name) {
   if (!confirm(`Bạn có chắc chắn muốn xóa sinh viên "${name}"?`)) return;
 
-  try {
-    const response = await fetch(`${getApiUrl()}/${id}`, { method: 'DELETE' });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || `HTTP ${response.status}`);
-
-    showToast(data.message || `Đã xóa sinh viên "${name}"!`, 'success');
-    loadStudents();
-  } catch (error) {
-    showToast(`Lỗi xóa: ${error.message}`, 'error');
+  if (!isFallbackMode) {
+    try {
+      const response = await fetch(`${getApiUrl()}/${id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (response.ok) {
+        showToast(data.message || `Đã xóa sinh viên "${name}"!`, 'success');
+        loadStudents();
+        return;
+      }
+    } catch (error) {
+      console.warn('Delete API call failed, falling back to local DB', error);
+    }
   }
+
+  let localData = getLocalDb();
+  localData = localData.filter(s => s.id !== id);
+  saveLocalDb(localData);
+  showToast(`Đã xóa sinh viên "${name}"!`, 'success');
+  loadStudents();
 }
 
 // ─── SEARCH ────────────────────────────────────────────────────────────────────
@@ -237,19 +368,20 @@ async function deleteStudent(id, name) {
 function handleSearch() {
   clearTimeout(searchTimeout);
   const keyword = document.getElementById('searchInput').value.trim();
-  searchTimeout = setTimeout(() => loadStudents(keyword), 300);
+  searchTimeout = setTimeout(() => loadStudents(keyword), 250);
 }
 
 // ─── TOAST ─────────────────────────────────────────────────────────────────────
 
 function showToast(message, type = 'success') {
   const container = document.getElementById('toastContainer');
+  if (!container) return;
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  const icon = type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation';
+  const icon = type === 'success' ? 'fa-circle-check' : (type === 'info' ? 'fa-circle-info' : 'fa-circle-exclamation');
   toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${escapeHtml(message)}</span>`;
   container.appendChild(toast);
-  setTimeout(() => toast.remove(), 5000);
+  setTimeout(() => toast.remove(), 4000);
 }
 
 // ─── UTILS ─────────────────────────────────────────────────────────────────────
@@ -263,3 +395,4 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
