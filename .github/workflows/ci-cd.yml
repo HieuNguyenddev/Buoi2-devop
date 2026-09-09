@@ -2,9 +2,9 @@ name: ASP.NET Core & Vercel CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "release", "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "release", "main" ]
   workflow_dispatch:
 
 jobs:
@@ -41,13 +41,13 @@ jobs:
 
   # ────────────────────────────────────────────────────────────────
   # JOB 2: Deploy Frontend (wwwroot) to Vercel
-  # Runs only on push to main (not on PRs)
+  # Chạy deploy khi có push/merge vào nhánh release
   # ────────────────────────────────────────────────────────────────
   deploy-vercel:
     name: Deploy Frontend to Vercel
     needs: build-dotnet
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: (github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main') && github.event_name == 'push'
 
     steps:
     - name: Checkout source code
