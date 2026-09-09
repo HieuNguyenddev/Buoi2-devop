@@ -86,43 +86,8 @@ function saveLocalDb(students) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  updateApiConfigUI();
   loadStudents();
 });
-
-function updateApiConfigUI() {
-  const baseUrl = getApiBaseUrl();
-  const displayUrl = baseUrl || (window.location.hostname === 'localhost' ? window.location.origin : 'Demo Cloud / LocalStorage Mode');
-
-  const currentUrlSpan = document.getElementById('currentApiUrl');
-  if (currentUrlSpan) {
-    currentUrlSpan.textContent = baseUrl ? `${baseUrl}/api/student` : (window.location.hostname === 'localhost' ? `${window.location.origin}/api/student` : 'Client Demo Storage (Tự động lưu)');
-  }
-
-  const swaggerLink = document.getElementById('swaggerLink');
-  if (swaggerLink) {
-    swaggerLink.href = baseUrl ? `${baseUrl}/swagger` : '/swagger';
-  }
-}
-
-function promptChangeApiUrl() {
-  const current = getApiBaseUrl();
-  const newUrl = prompt(
-    'Nhập URL gốc của Backend C# API:\nVí dụ: https://my-backend-api.onrender.com hoặc http://localhost:5292\n(Để trống để sử dụng chế độ Demo Cloud Lưu trữ Trình duyệt):',
-    current || ''
-  );
-  if (newUrl === null) return;
-  const trimmed = newUrl.trim().replace(/\/$/, '');
-  if (trimmed) {
-    localStorage.setItem('API_BASE_URL', trimmed);
-    showToast('Đã chuyển sang Backend URL: ' + trimmed, 'success');
-  } else {
-    localStorage.removeItem('API_BASE_URL');
-    showToast('Đã chuyển sang chế độ Demo Cloud Storage', 'info');
-  }
-  updateApiConfigUI();
-  loadStudents();
-}
 
 // ─── READ ──────────────────────────────────────────────────────────────────────
 
@@ -161,7 +126,7 @@ async function loadStudents(keyword = '') {
     let localData = getLocalDb();
     if (keyword) {
       const kw = keyword.toLowerCase();
-      students = localData.filter(s => 
+      students = localData.filter(s =>
         (s.studentCode && s.studentCode.toLowerCase().includes(kw)) ||
         (s.fullName && s.fullName.toLowerCase().includes(kw)) ||
         (s.email && s.email.toLowerCase().includes(kw)) ||
@@ -182,7 +147,7 @@ async function loadStudents(keyword = '') {
 function renderStudentTable(students) {
   const tbody = document.getElementById('studentTableBody');
   if (!students || students.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">Không tìm thấy sinh viên nào trong hệ thống.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><i class="fa-regular fa-folder-open" style="font-size:2rem;margin-bottom:0.5rem;display:block;opacity:0.5;"></i>Không tìm thấy sinh viên nào trong hệ thống.</td></tr>`;
     return;
   }
 
@@ -190,21 +155,21 @@ function renderStudentTable(students) {
     const badgeInfo = getBadgeRank(sv.gpa);
     return `
       <tr>
-        <td><strong>${escapeHtml(sv.studentCode)}</strong></td>
+        <td><span class="student-code-badge">${escapeHtml(sv.studentCode)}</span></td>
         <td>
-          <div style="font-weight:600;">${escapeHtml(sv.fullName)}</div>
-          <div style="font-size:0.75rem;color:var(--text-muted);">${escapeHtml(sv.email || '')}</div>
+          <div class="student-name">${escapeHtml(sv.fullName)}</div>
+          <div class="student-email">${escapeHtml(sv.email || 'Chưa cập nhật email')}</div>
         </td>
-        <td>${escapeHtml(sv.className)}</td>
-        <td><strong style="color:#60a5fa;">${Number(sv.gpa).toFixed(1)}</strong></td>
+        <td><span style="color: #cbd5e1; font-weight: 500;">${escapeHtml(sv.className)}</span></td>
+        <td><span class="student-gpa">${Number(sv.gpa).toFixed(1)}</span></td>
         <td><span class="badge ${badgeInfo.class}">${badgeInfo.label}</span></td>
-        <td>
-          <div style="display:flex;gap:6px;">
-            <button class="btn btn-secondary btn-sm" onclick='editStudent(${JSON.stringify(sv).replace(/'/g, "&apos;")})'>
-              <i class="fa-solid fa-pen-to-square"></i>
+        <td style="text-align: right;">
+          <div class="actions-cell">
+            <button class="btn btn-action-edit" title="Chỉnh sửa" onclick='editStudent(${JSON.stringify(sv).replace(/'/g, "&apos;")})'>
+              <i class="fa-solid fa-pen"></i>
             </button>
-            <button class="btn btn-danger btn-sm" onclick="deleteStudent(${sv.id}, '${escapeHtml(sv.fullName)}')">
-              <i class="fa-solid fa-trash-can"></i>
+            <button class="btn btn-action-delete" title="Xóa" onclick="deleteStudent(${sv.id}, '${escapeHtml(sv.fullName)}')">
+              <i class="fa-solid fa-trash"></i>
             </button>
           </div>
         </td>
@@ -228,10 +193,10 @@ function updateStats(students) {
 
 function getBadgeRank(gpa) {
   const g = Number(gpa);
-  if (g >= 8.5) return { class: 'badge-excel',   label: 'Xuất sắc'    };
-  if (g >= 7.0) return { class: 'badge-good',    label: 'Khá / Giỏi'  };
-  if (g >= 5.0) return { class: 'badge-average', label: 'Trung bình'  };
-  return               { class: 'badge-poor',    label: 'Yếu / Kém'   };
+  if (g >= 8.5) return { class: 'badge-excel', label: 'Xuất sắc' };
+  if (g >= 7.0) return { class: 'badge-good', label: 'Khá / Giỏi' };
+  if (g >= 5.0) return { class: 'badge-average', label: 'Trung bình' };
+  return { class: 'badge-poor', label: 'Yếu / Kém' };
 }
 
 // ─── CREATE / UPDATE ───────────────────────────────────────────────────────────
@@ -239,13 +204,13 @@ function getBadgeRank(gpa) {
 async function handleFormSubmit(event) {
   event.preventDefault();
 
-  const id          = parseInt(document.getElementById('studentId').value) || 0;
+  const id = parseInt(document.getElementById('studentId').value) || 0;
   const studentCode = document.getElementById('studentCode').value.trim();
-  const fullName    = document.getElementById('fullName').value.trim();
-  const className   = document.getElementById('className').value.trim();
-  const gpa         = parseFloat(document.getElementById('gpa').value) || 0;
-  const email       = document.getElementById('email').value.trim();
-  const dobInput    = document.getElementById('dateOfBirth').value;
+  const fullName = document.getElementById('fullName').value.trim();
+  const className = document.getElementById('className').value.trim();
+  const gpa = parseFloat(document.getElementById('gpa').value) || 0;
+  const email = document.getElementById('email').value.trim();
+  const dobInput = document.getElementById('dateOfBirth').value;
   const dateOfBirth = dobInput ? new Date(dobInput).toISOString() : new Date().toISOString();
 
   const isEdit = id > 0;
@@ -254,7 +219,7 @@ async function handleFormSubmit(event) {
   // If live API is connected
   if (!isFallbackMode) {
     const method = isEdit ? 'PUT' : 'POST';
-    const url    = isEdit ? `${getApiUrl()}/${id}` : getApiUrl();
+    const url = isEdit ? `${getApiUrl()}/${id}` : getApiUrl();
 
     try {
       const response = await fetch(url, {
@@ -306,12 +271,12 @@ async function handleFormSubmit(event) {
 // ─── EDIT ──────────────────────────────────────────────────────────────────────
 
 function editStudent(student) {
-  document.getElementById('studentId').value    = student.id;
-  document.getElementById('studentCode').value  = student.studentCode;
-  document.getElementById('fullName').value     = student.fullName;
-  document.getElementById('className').value    = student.className;
-  document.getElementById('gpa').value          = student.gpa;
-  document.getElementById('email').value        = student.email || '';
+  document.getElementById('studentId').value = student.id;
+  document.getElementById('studentCode').value = student.studentCode;
+  document.getElementById('fullName').value = student.fullName;
+  document.getElementById('className').value = student.className;
+  document.getElementById('gpa').value = student.gpa;
+  document.getElementById('email').value = student.email || '';
 
   if (student.dateOfBirth) {
     document.getElementById('dateOfBirth').value =
