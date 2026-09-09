@@ -197,3 +197,4 @@
 /Users/minhhieu/Documents/DEVOP/buoi2/obj/Debug/net10.0/ref/SimpleCrudApp.dll
 /Users/minhhieu/Documents/DEVOP/buoi2/obj/Debug/net10.0/compressed/j5ytdbnabn-{0}-0s0ajqpdfy-0s0ajqpdfy.gz
 /Users/minhhieu/Documents/DEVOP/buoi2/obj/Debug/net10.0/compressed/lo4k08yj36-{0}-bpkjy1c2m2-bpkjy1c2m2.gz
+/Users/minhhieu/Documents/DEVOP/buoi2/obj/Debug/net10.0/SimpleCrudApp.sourcelink.json

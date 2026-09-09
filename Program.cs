@@ -24,32 +24,19 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Cấu hình Database Context (Đọc chuỗi kết nối trực tiếp từ .env hoặc appsettings.json)
-string dbProvider = Environment.GetEnvironmentVariable("USE_DATABASE") 
-    ?? builder.Configuration.GetValue<string>("UseDatabase") 
-    ?? "SqlServer";
-
-string sqlServerConn = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
-
-string sqliteConn = Environment.GetEnvironmentVariable("SQLITE_CONNECTION_STRING");
-
-
+// Cấu hình Database Context cho SQL Server (Đọc chuỗi kết nối từ .env hoặc appsettings.json)
+string connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Không tìm thấy chuỗi kết nối SQL Server ('DefaultConnection').");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    if (dbProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
-    {
-        options.UseSqlServer(sqlServerConn, sqlServerOptions => 
-            sqlServerOptions.EnableRetryOnFailure(
-                maxRetryCount: 3, 
-                maxRetryDelay: TimeSpan.FromSeconds(5), 
-                errorNumbersToAdd: null
-            ));
-    }
-    else
-    {
-        options.UseSqlite(sqliteConn);
-    }
+    options.UseSqlServer(connectionString, sqlServerOptions => 
+        sqlServerOptions.EnableRetryOnFailure(
+            maxRetryCount: 3, 
+            maxRetryDelay: TimeSpan.FromSeconds(5), 
+            errorNumbersToAdd: null
+        ));
 });
 
 // Cấu hình CORS cho phép truy cập frontend
@@ -65,7 +52,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Khởi tạo Database và Seed Data tự động khi khởi chạy
+// Tự động Migrate và khởi tạo Database khi khởi chạy ứng dụng (Code First)
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -73,20 +60,14 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var dbContext = services.GetRequiredService<AppDbContext>();
-        logger.LogInformation("Checking database initialization...");
-        await dbContext.Database.EnsureCreatedAsync();
-        logger.LogInformation("Database ready!");
+        logger.LogInformation("Đang kiểm tra và áp dụng EF Core Migrations vào SQL Server...");
+        await dbContext.Database.MigrateAsync();
+        logger.LogInformation("Cơ sở dữ liệu SQL Server đã được Migrate thành công!");
     }
     catch (Exception ex)
     {
-        logger.LogWarning($"Không thể kết nối SQL Server ({ex.Message}). Đang tự động chuyển sang cơ sở dữ liệu SQLite dự phòng...");
-        
-        // Fallback sang SQLite nếu kết nối SQL Server không khả dụng trên môi trường thử nghiệm
-        var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseSqlite(sqliteConn);
-        using var fallbackContext = new AppDbContext(optionsBuilder.Options);
-        await fallbackContext.Database.EnsureCreatedAsync();
-        logger.LogInformation("SQLite fallback database created successfully at 'quanlysinhvien.db'");
+        logger.LogError(ex, "Lỗi trong quá trình Migrate cơ sở dữ liệu SQL Server.");
+        throw;
     }
 }
 
