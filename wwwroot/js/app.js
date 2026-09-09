@@ -1,26 +1,65 @@
-// Cấu hình URL Backend API (Hỗ trợ gọi API khi Deploy Frontend lên Vercel)
-const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const defaultBackendUrl = isLocalHost ? '' : (localStorage.getItem('API_BASE_URL') || 'http://localhost:5000');
-const API_URL = `${defaultBackendUrl}/api/student`;
+// Cấu hình URL Backend API (Hỗ trợ khi Deploy Frontend lên Vercel)
+function getApiBaseUrl() {
+  const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const savedUrl = localStorage.getItem('API_BASE_URL');
+  if (savedUrl) return savedUrl.replace(/\/$/, '');
+  return isLocalHost ? '' : 'http://localhost:5000';
+}
+
+function getApiUrl() {
+  const base = getApiBaseUrl();
+  return base ? `${base}/api/student` : '/api/student';
+}
 
 let currentStudents = [];
 let searchTimeout = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+  updateApiConfigUI();
   loadStudents();
 });
+
+function updateApiConfigUI() {
+  const baseUrl = getApiBaseUrl();
+  const displayUrl = baseUrl || `${window.location.origin}`;
+  
+  const currentUrlSpan = document.getElementById('currentApiUrl');
+  if (currentUrlSpan) {
+    currentUrlSpan.textContent = `${displayUrl}/api/student`;
+  }
+
+  const swaggerLink = document.getElementById('swaggerLink');
+  if (swaggerLink) {
+    swaggerLink.href = baseUrl ? `${baseUrl}/swagger` : '/swagger';
+  }
+}
+
+function promptChangeApiUrl() {
+  const current = getApiBaseUrl() || 'http://localhost:5000';
+  const newUrl = prompt('Nhập địa chỉ URL của Server Backend (ví dụ: http://localhost:5000 hoặc https://your-api.onrender.com):', current);
+  if (newUrl !== null) {
+    const trimmed = newUrl.trim().replace(/\/$/, '');
+    if (trimmed) {
+      localStorage.setItem('API_BASE_URL', trimmed);
+    } else {
+      localStorage.removeItem('API_BASE_URL');
+    }
+    updateApiConfigUI();
+    loadStudents();
+  }
+}
 
 // Fetch all students from API
 async function loadStudents(keyword = '') {
   try {
-    let url = API_URL;
+    let url = getApiUrl();
     if (keyword) {
       url += `?keyword=${encodeURIComponent(keyword)}`;
     }
 
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+      throw new Error(`HTTP ${response.status} (${response.statusText || 'Không thể kết nối Backend API'})`);
     }
 
     currentStudents = await response.json();
@@ -28,7 +67,7 @@ async function loadStudents(keyword = '') {
     updateStats(currentStudents);
   } catch (error) {
     console.error('Error loading students:', error);
-    showToast(`Không thể tải dữ liệu: ${error.message}`, 'error');
+    showToast(`Không thể kết nối Backend API (${error.message}). Nhấn "Đổi URL Backend" nếu C# API đang chạy ở cổng khác.`, 'error');
   }
 }
 
@@ -117,7 +156,8 @@ async function handleFormSubmit(event) {
 
   const isEdit = id > 0;
   const method = isEdit ? 'PUT' : 'POST';
-  const url = isEdit ? `${API_URL}/${id}` : API_URL;
+  const baseUrl = getApiUrl();
+  const url = isEdit ? `${baseUrl}/${id}` : baseUrl;
 
   try {
     const response = await fetch(url, {
@@ -179,7 +219,7 @@ async function deleteStudent(id, name) {
   }
 
   try {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await fetch(`${getApiUrl()}/${id}`, {
       method: 'DELETE'
     });
 
