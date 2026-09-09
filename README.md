@@ -134,8 +134,7 @@ Push to main
 │  │ 1. Checkout source       │   │
 │  │ 2. Inject BACKEND_API_URL│   │ ← sed thay __API_BASE_URL__
 │  │    vào wwwroot/js/app.js  │   │   trong app.js trước khi deploy
-│  │ 3. vercel pull           │   │
-│  │ 4. vercel deploy --prod  │   │
+│  │ 3. vercel wwwroot --prod │   │ ← Deploy trực tiếp thư mục wwwroot
 │  └──────────────────────────┘   │
 └─────────────────────────────────┘
 ```
