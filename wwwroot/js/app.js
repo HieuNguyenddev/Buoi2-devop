@@ -86,6 +86,11 @@ function saveLocalDb(students) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  const swaggerLink = document.getElementById('swaggerLink');
+  if (swaggerLink) {
+    const base = getApiBaseUrl();
+    swaggerLink.href = base ? `${base}/swagger` : '/swagger';
+  }
   loadStudents();
 });
 
