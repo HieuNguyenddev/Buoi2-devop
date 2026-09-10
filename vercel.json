@@ -4,8 +4,12 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/$1"
+      "source": "/swagger",
+      "destination": "/swagger/index.html"
+    },
+    {
+      "source": "/swagger/",
+      "destination": "/swagger/index.html"
     }
   ]
 }
