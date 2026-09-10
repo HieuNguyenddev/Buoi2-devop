@@ -12,12 +12,13 @@
       background: #fafafa;
     }
     .topbar {
-      display: none;
+      display: none !important;
     }
     .custom-header {
-      background: #0f172a;
+      background: #090d16;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       color: #fff;
-      padding: 1rem 2rem;
+      padding: 1.1rem 2rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -27,17 +28,26 @@
       margin: 0;
       font-size: 1.25rem;
       font-weight: 700;
+      background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
     .custom-header a {
-      color: #60a5fa;
+      color: #818cf8;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
       text-decoration: none;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
+      font-weight: 600;
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      transition: all 0.2s;
     }
     .custom-header a:hover {
-      text-decoration: underline;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
     }
   </style>
 </head>
@@ -46,15 +56,189 @@
     <h1>Hệ Thống Quản Lý Sinh Viên - OpenAPI Specification</h1>
     <a href="/">← Quay lại Trang Chủ</a>
   </div>
+
   <div id="swagger-ui"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-standalone-preset.min.js"></script>
   <script>
+    const spec = {
+      "openapi": "3.0.1",
+      "info": {
+        "title": "Student CRUD API",
+        "description": "API Quản lý sinh viên - ASP.NET Core & Entity Framework Core (SQL Server)",
+        "version": "v1.0.0"
+      },
+      "servers": [
+        {
+          "url": "/",
+          "description": "Server hiện tại"
+        }
+      ],
+      "paths": {
+        "/api/student": {
+          "get": {
+            "tags": ["Student"],
+            "summary": "Lấy danh sách tất cả sinh viên (hỗ trợ tìm kiếm theo từ khóa và lớp)",
+            "parameters": [
+              {
+                "name": "keyword",
+                "in": "query",
+                "description": "Từ khóa tìm kiếm theo họ tên, mã SV hoặc email",
+                "required": false,
+                "schema": { "type": "string" }
+              },
+              {
+                "name": "className",
+                "in": "query",
+                "description": "Lọc theo tên lớp học (ví dụ: CNTT-K15A)",
+                "required": false,
+                "schema": { "type": "string" }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Danh sách sinh viên",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Student" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "post": {
+            "tags": ["Student"],
+            "summary": "Thêm mới một sinh viên vào hệ thống",
+            "requestBody": {
+              "required": true,
+              "content": {
+                "application/json": {
+                  "schema": { "$ref": "#/components/schemas/StudentInput" }
+                }
+              }
+            },
+            "responses": {
+              "201": {
+                "description": "Thêm mới thành công",
+                "content": {
+                  "application/json": {
+                    "schema": { "$ref": "#/components/schemas/Student" }
+                  }
+                }
+              },
+              "400": {
+                "description": "Dữ liệu không hợp lệ hoặc mã sinh viên đã tồn tại"
+              }
+            }
+          }
+        },
+        "/api/student/{id}": {
+          "get": {
+            "tags": ["Student"],
+            "summary": "Lấy thông tin chi tiết một sinh viên theo ID",
+            "parameters": [
+              {
+                "name": "id",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "integer" }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "Thông tin sinh viên",
+                "content": {
+                  "application/json": {
+                    "schema": { "$ref": "#/components/schemas/Student" }
+                  }
+                }
+              },
+              "404": {
+                "description": "Không tìm thấy sinh viên với ID tương ứng"
+              }
+            }
+          },
+          "put": {
+            "tags": ["Student"],
+            "summary": "Cập nhật thông tin sinh viên theo ID",
+            "parameters": [
+              {
+                "name": "id",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "integer" }
+              }
+            ],
+            "requestBody": {
+              "required": true,
+              "content": {
+                "application/json": {
+                  "schema": { "$ref": "#/components/schemas/Student" }
+                }
+              }
+            },
+            "responses": {
+              "200": { "description": "Cập nhật thành công" },
+              "400": { "description": "Dữ liệu không hợp lệ hoặc ID không khớp" },
+              "404": { "description": "Không tìm thấy sinh viên" }
+            }
+          },
+          "delete": {
+            "tags": ["Student"],
+            "summary": "Xóa vĩnh viễn một sinh viên khỏi hệ thống theo ID",
+            "parameters": [
+              {
+                "name": "id",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "integer" }
+              }
+            ],
+            "responses": {
+              "200": { "description": "Xóa thành công" },
+              "404": { "description": "Không tìm thấy sinh viên" }
+            }
+          }
+        }
+      },
+      "components": {
+        "schemas": {
+          "Student": {
+            "type": "object",
+            "required": ["id", "studentCode", "fullName", "className", "gpa"],
+            "properties": {
+              "id": { "type": "integer", "example": 1 },
+              "studentCode": { "type": "string", "example": "SV001" },
+              "fullName": { "type": "string", "example": "Nguyễn Văn An" },
+              "dateOfBirth": { "type": "string", "format": "date-time", "example": "2003-05-15T00:00:00Z" },
+              "className": { "type": "string", "example": "CNTT-K15A" },
+              "gpa": { "type": "number", "format": "double", "example": 8.5 },
+              "email": { "type": "string", "format": "email", "example": "an.nguyen@example.com" }
+            }
+          },
+          "StudentInput": {
+            "type": "object",
+            "required": ["studentCode", "fullName", "className", "gpa"],
+            "properties": {
+              "studentCode": { "type": "string", "example": "SV006" },
+              "fullName": { "type": "string", "example": "Nguyễn Văn Nam" },
+              "dateOfBirth": { "type": "string", "format": "date-time", "example": "2003-01-01T00:00:00Z" },
+              "className": { "type": "string", "example": "CNTT-K16A" },
+              "gpa": { "type": "number", "format": "double", "example": 8.0 },
+              "email": { "type": "string", "format": "email", "example": "nam.nguyen@example.com" }
+            }
+          }
+        }
+      }
+    };
+
     window.onload = function() {
-      // Determine swagger JSON url
       const ui = SwaggerUIBundle({
-        url: "/swagger/v1/swagger.json",
+        spec: spec,
         dom_id: '#swagger-ui',
         deepLinking: true,
         presets: [
@@ -71,3 +255,4 @@
   </script>
 </body>
 </html>
+
